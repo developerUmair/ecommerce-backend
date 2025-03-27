@@ -72,7 +72,23 @@ export const addProduct = async (req, res, next) => {
         });
       }
 
-      const { name, description, price, stock, category } = req.body;
+      const {
+        name,
+        description,
+        price,
+        stock,
+        category,
+        subCategories,
+        quantity,
+        sold,
+        rating,
+        numberOfReviews,
+        tags,
+        specifications,
+        variants,
+        isFeatured,
+        isActive,
+      } = req.body;
 
       // Validate numeric fields
       if (isNaN(price) || isNaN(stock)) {
@@ -81,6 +97,14 @@ export const addProduct = async (req, res, next) => {
           error: "Price and stock must be numbers",
         });
       }
+
+      const parsedSpecifications = specifications
+        ? JSON.parse(specifications)
+        : [];
+      const parsedVariants = variants ? JSON.parse(variants) : [];
+      const parsedsubCategories = subCategories
+        ? JSON.parse(subCategories)
+        : [];
 
       // Upload image to Cloudinary
       const uploadResult = await uploadImageToCloudinary(req.file.buffer);
@@ -93,6 +117,16 @@ export const addProduct = async (req, res, next) => {
         stock: parseInt(stock),
         image: uploadResult.secure_url,
         category: category.trim(),
+        subCategories: parsedsubCategories,
+        quantity: parseInt(quantity),
+        sold: parseInt(sold),
+        rating: parseFloat(rating),
+        numberOfReviews: parseInt(numberOfReviews),
+        tags: tags ? JSON.parse(tags) : [],
+        specifications: parsedSpecifications,
+        variants: parsedVariants,
+        isFeatured: isFeatured === "true", // Convert string to boolean
+        isActive: isActive === "true", // Convert string to boolean
       });
 
       await product.save();
@@ -110,6 +144,16 @@ export const addProduct = async (req, res, next) => {
             stock: product.stock,
             imageUrl: product.image,
             category: product.category,
+            categorparsedsubCategories: product.parsedsubCategories,
+            quantity: product.quantity,
+            sold: product.sold,
+            rating: product.rating,
+            numberOfReviews: product.numberOfReviews,
+            tags: product.tags,
+            specifications: product.specifications,
+            variants: product.variants,
+            isFeatured: product.isFeatured,
+            isActive: product.isActive,
           },
         },
       });
@@ -132,11 +176,68 @@ export const addProduct = async (req, res, next) => {
 
 export const getAllProducts = async (req, res, next) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.find()
+      .populate({
+        path: "category",
+        select: "name description",
+      })
+      .populate({
+        path: "subCategories",
+        select: "name description",
+      });
     res.status(200).json({
       success: true,
       count: products?.length,
       products,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate({
+        path: "category",
+        select: "name description",
+      })
+      .populate({
+        path: "subCategories",
+        select: "name description",
+      });
+    // .populate({
+    //   path: "reviews",
+    //   select: "title text rating",
+    // });
+
+    if (!product) {
+      return next((`No product with the id of ${req.params.id}`, 404));
+    }
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// deleteProduct
+
+export const deleteProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      const error = new Error("No product exists");
+      error.status = 404;
+      throw error;
+    }
+    await product.deleteOne();
+    res.status(200).json({
+      success: true,
+      message: "Product deleted successfully.",
     });
   } catch (error) {
     next(error);

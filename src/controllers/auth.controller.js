@@ -8,7 +8,7 @@ export const register = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, isAdmin } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -23,7 +23,7 @@ export const register = async (req, res, next) => {
 
     // creating user
     const newUser = await User.create(
-      [{ name, email, password: hashedPassword }],
+      [{ name, email, password: hashedPassword, isAdmin }],
       {
         session,
       }
