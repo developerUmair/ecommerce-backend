@@ -1,21 +1,3 @@
-/* import multer from "multer";
-import Product from "../models/product.model.js";
-import cloudinary from "../config/cloudinary.js";
-
-export const addProduct = async (req, res, next) => {
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json({
-      success: true,
-      message: "product added successfully",
-      product,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
- */
-
 import multer from "multer";
 import Product from "../models/product.model.js";
 import cloudinary from "../config/cloudinary.js";
@@ -24,16 +6,16 @@ import { validationResult } from "express-validator";
 // Configure multer to handle file uploads
 const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed'), false);
+    cb(new Error("Only image files are allowed"), false);
   }
 };
-const upload = multer({ 
-  storage, 
+const upload = multer({
+  storage,
   fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 } 
+  limits: { fileSize: 2 * 1024 * 1024 },
 }).single("image");
 
 /**
@@ -43,10 +25,10 @@ const uploadImageToCloudinary = async (fileBuffer) => {
   try {
     return await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { 
+        {
           resource_type: "image",
           folder: "products", // Organize images in folder
-          quality: "auto:good" // Optimize image quality
+          quality: "auto:good", // Optimize image quality
         },
         (error, result) => {
           if (error) reject(error);
@@ -68,16 +50,16 @@ export const addProduct = async (req, res, next) => {
   upload(req, res, async (uploadError) => {
     try {
       if (uploadError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: uploadError.message || "File upload failed"
+          error: uploadError.message || "File upload failed",
         });
       }
 
       if (!req.file) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: "No image file provided" 
+          error: "No image file provided",
         });
       }
 
@@ -86,17 +68,17 @@ export const addProduct = async (req, res, next) => {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array()
+          errors: errors.array(),
         });
       }
 
-      const { name, description, price, stock } = req.body;
+      const { name, description, price, stock, category } = req.body;
 
       // Validate numeric fields
       if (isNaN(price) || isNaN(stock)) {
         return res.status(400).json({
           success: false,
-          error: "Price and stock must be numbers"
+          error: "Price and stock must be numbers",
         });
       }
 
@@ -109,7 +91,8 @@ export const addProduct = async (req, res, next) => {
         description: description.trim(),
         price: parseFloat(price),
         stock: parseInt(stock),
-        image: uploadResult.secure_url
+        image: uploadResult.secure_url,
+        category: category.trim(),
       });
 
       await product.save();
@@ -125,24 +108,37 @@ export const addProduct = async (req, res, next) => {
             description: product.description,
             price: product.price,
             stock: product.stock,
-            imageUrl: product.image
-          }
-        }
+            imageUrl: product.image,
+            category: product.category,
+          },
+        },
       });
-
     } catch (error) {
       // Log the error for debugging
       console.error("Product creation error:", error);
-      
+
       // Send appropriate error response
       if (error.message.includes("Image upload failed")) {
         return res.status(502).json({
           success: false,
-          error: "Image storage service unavailable"
+          error: "Image storage service unavailable",
         });
       }
 
       next(error);
     }
   });
+};
+
+export const getAllProducts = async (req, res, next) => {
+  try {
+    const products = await Product.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: products?.length,
+      products,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
