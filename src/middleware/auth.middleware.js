@@ -23,10 +23,20 @@ const authorize = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({
-      message: "Unauthorized",
-      error: error.message,
-    });
+    next(error)
+  }
+};
+
+export const adminProtect = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({
+        message: "Access denied. Admins only",
+      });
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
 };
 
