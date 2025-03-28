@@ -195,6 +195,34 @@ export const getAllProducts = async (req, res, next) => {
   }
 };
 
+// get All Products by category
+
+export const getProducts = async (req, res, next) => {
+  try {
+    if (req.params.categoryId) {
+      const products = await Product.find({
+        category: req.params.categoryId,
+      })
+        .populate({
+          path: "category",
+          select: "name description",
+        })
+        .populate({
+          path: "subCategories",
+          select: "name description",
+        });
+
+      return res.status(200).json({
+        success: true,
+        count: products.length,
+        products,
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -223,8 +251,31 @@ export const getProduct = async (req, res, next) => {
   }
 };
 
-// deleteProduct
+// Update product
+export const updateProduct = async (req, res, next) => {
+  try {
+    let product = await Product.findById(req.params.id);
+    if (!product) {
+      const error = new Error(`No product found for this ${req.params.id}`);
+      error.status = 404;
+      throw error;
+    }
 
+    product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// deleteProduct
 export const deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
